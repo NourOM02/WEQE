@@ -109,10 +109,6 @@ def to_json(dataset:str, zipped:bool=True) -> None:
 
     return
 
-
-
-
-
 def index(dataset, threads=4):
     """
     This function can be used after using 
