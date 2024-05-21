@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-directory=".raw_dataset"
+directory=".raw_datasets"
 
 if [ ! -d "$HOME/$directory" ]; then
 	echo "Directory does not exist! Creating... "

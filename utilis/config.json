@@ -1,0 +1,19 @@
+{
+    "raw_datasets" : "/home/application/.raw_datasets",
+
+    "datasets" : ["arguana","climate-fever", "cqadupstack", "dbpedia-entity", "fever",
+                  "fiqa", "msmarco", "hotpotqa", "nfcorpus", "nq", "quora", "scidocs",
+                  "scifact", "trec-covid", "webis-touche2020"],
+
+    "project_path" : "/home/application/QueryExpansionLLMs",
+
+    "dependencies" : "/home/application/.QueryExpansionLLMs",
+
+    "metrics" : {
+        "MRR@10" : "recip_rank",
+        "R@1000" : "recall_1000",
+        "MAP" : "map",
+        "NDCG@10" : "ndcg_cut_10"
+    },
+    "expansions" : ["Q2D", "Q2D_PRF", "Q2D_ZS"]
+}
