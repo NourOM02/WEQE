@@ -1,4 +1,4 @@
 from Pipeline import Pipeline
 
-x = Pipeline()
-x.EDA()
+qe = Pipeline()
+qe.EDA()

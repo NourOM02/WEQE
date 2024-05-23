@@ -11,6 +11,7 @@ with open(config, 'r') as json_file:
     metrics = config['metrics']
     expansions = config['expansions']
 
+
 # Load libraries
 import shutil
 import zipfile
@@ -19,6 +20,13 @@ import subprocess
 import pandas as pd
 from Expansion import Expansion
 import re
+import string
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+import matplotlib.colors as mpl
+from time import perf_counter as pf
+from wordcloud import WordCloud
+from stopwords import stop_words as stopwords
 
 class Dataset(Expansion):
     def __init__(self, name:str) -> None:
@@ -243,6 +251,7 @@ class Dataset(Expansion):
         os.system(command)
 
     def PRF(self, k:int=5):
+        print(f"generating PRF for {self.name}")
         queries = pd.read_csv(self.queries_path, sep="\t", header=None)
         corpus = ujson.load(open(self.corpus_path, 'r'))
         runs = pd.read_csv(self.run_path, sep=" ", header=None)
@@ -278,12 +287,77 @@ class Dataset(Expansion):
         This function is used to determine the number/lengths of queries, passages and qrels
         in the dataset. It is used to determine the number of examples to prepare.
         """
+        output = {"cardinal" : [], "length" : [], "ratio" : 0}
         queries = pd.read_csv(self.queries_path, sep="\t", header=None)
         queries['word_count'] = queries.iloc[:,1].apply(lambda x: len(x.split()))
         qrels = pd.read_csv(self.qrels_path, sep="\t", header=None)
         corpus = pd.read_json(self.corpus_path)
+        words = {}
+        def clean_text(text):
+            # Remove punctuation
+            text = text.translate(str.maketrans('', '', string.punctuation))
+            # Remove numbers
+            text = re.sub(r'\d+', '', text)
+            # Remove extra whitespace
+            text = text.strip()
+            return text
+        stopwords_ = set(stopwords)
+        for i in tqdm(range(len(queries))):
+            for word in clean_text(queries.iloc[i,1].lower()).split():
+                if word in stopwords_:
+                    continue
+                if word in words:
+                    words[word] += 1
+                else:
+                    words[word] = 1
+
+        wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(words)
+        plt.figure(figsize=(10, 5))
+        plt.imshow(wordcloud, interpolation='bilinear')
+        plt.axis('off')  # No axes for the word cloud
+        plt.savefig(f"{self.name}.png")
+        plt.show()
+
         corpus['word_count'] = corpus.iloc[:,1].apply(lambda x: len(x.split()))
-        n = (len(queries), len(corpus), len(qrels))
-        l = [round(queries['word_count'].mean(), 2), round(corpus['word_count'].mean(), 2)]
-        r = round(len(qrels)/len(queries), 2)
-        return n, l, r
+        queries["word_count"] = queries.iloc[:,1].apply(lambda x: len(x.split()))
+
+
+        histogram = plt.figure(figsize=(18, 6), dpi=300)
+        gs = GridSpec(1, 2, figure=histogram)
+
+        ax1 = histogram.add_subplot(gs[0, 0])
+        ax2 = histogram.add_subplot(gs[0, 1])
+
+        # Colors and normalization for bar colors
+        colours = ["#bbdefb", "#2196f3"]
+        for i, ax in enumerate([ax1, ax2]):
+            active = corpus if ax == ax1 else queries
+            cmap = mpl.LinearSegmentedColormap.from_list("colour_map", colours, N=256)
+            norm = mpl.Normalize(vmin=min(active['word_count']), vmax=max(active['word_count']))
+
+            # Grid customization
+            ax.grid(which="major", axis='x', color='#DAD8D7', alpha=0.5, zorder=1)
+            ax.grid(which="major", axis='y', color='#DAD8D7', alpha=0.5, zorder=1)
+
+            # Plotting the bars
+            hist = ax.hist(active["word_count"], bins=10, color="#2196f3")
+            ax.set_title(f'Distribution of word count in {"Corpus" if ax == ax1 else "Queries"}')
+            ax.set_xlabel('word count')
+            ax.set_ylabel('number of occurences')
+            ax.tick_params(axis='x', rotation=45)
+
+        # Show the plot
+        histogram.tight_layout()
+        plt.savefig(f'{self.name}')
+        plt.show()
+
+        output["cardinal"] = [len(queries), len(corpus), len(qrels)]
+        output["length"] = [round(queries['word_count'].mean(), 2),
+                            round(corpus['word_count'].mean(), 2)]
+        output["ratio"] = round(len(qrels)/len(queries), 2)
+        
+        return output
+    
+for dataset in datasets:
+    x = Dataset(dataset)
+    x._numbers()

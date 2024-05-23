@@ -11,7 +11,6 @@ with open(config, 'r') as json_file:
     expansions = config['expansions']
     metrics = config['metrics']
 
-from pyserini.search.lucene import LuceneSearcher
 from groq import Groq
 import pandas as pd
 import numpy as np
@@ -34,23 +33,39 @@ class Expansion:
         self.queries_path = f"{dependencies}/datasets/queries/{self.name}{suffix}.tsv"
         self.run_path = f"{dependencies}/.runs/{self.name}{suffix}.tsv"
 
-    def _API(self):
+    def _API(self, key="GROQ_KEY"):
         client = Groq(
-            api_key=os.environ.get("GROQ_KEY_2"),
+            api_key=os.environ.get(key),
         )
         return client
     
     def generate(self, prompt, model="llama3-8b-8192"):
-        chat_completion = self.client.chat.completions.create(
-        messages=[
-                {
-                    "role": "user",
-                    "content": f"{prompt}",
-                }
-            ],
-            model=model,
-        )
-        return chat_completion.choices[0].message.content
+
+        def completion(self, prompt, model):
+            chat_completion = self.client.chat.completions.create(
+                messages=[
+                        {
+                            "role": "user",
+                            "content": f"{prompt}",
+                        }
+                    ],
+                    model=model,
+                )
+            return chat_completion.choices[0].message.content
+        
+        try:
+            return completion(self, prompt, model)
+        except:
+            try:
+                self._API("GROQ_KEY_2")
+                return completion(self, prompt, model)
+            except:
+                try:
+                    self._API("GROQ_KEY_3")
+                    return completion(self, prompt, model)
+                except:
+                    print("API keys exhausted")
+
     
     def _concat(self, query_completion):
         return f"{query_completion[0] * 5} + {query_completion[1]}".replace('\n', ' ')
@@ -73,7 +88,6 @@ class Expansion:
         
         prompt += instruction + f"Query : {query}" + '\n' + "Passage :"
         completion = self.generate(prompt)
-        sleep(1)
         return self._concat((query, completion))
     
     def _Q2D_PRF(self, **kwargs):
@@ -93,7 +107,6 @@ class Expansion:
             prompt += doc + '\n'
         prompt += f"Query : {query}" + '\n' + "Passage :"
         completion = self.generate(prompt)
-        sleep(1)
         return self._concat((query, completion))
     
     def _Q2D_ZS(self, **kwargs):
@@ -104,7 +117,6 @@ class Expansion:
         print("*", sep='', end='', flush=True)
         prompt = f"Write a passage that answers the given query: {query}"
         completion = self.generate(prompt)
-        sleep(1)
         return self._concat((query, completion))
     
     def expand(self, examples_path, prf_path):
