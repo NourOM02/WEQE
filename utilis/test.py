@@ -1,4 +1,5 @@
-from Pipeline import Pipeline
-
-qe = Pipeline()
-qe.EDA()
+print("start")
+from Dataset import Dataset
+print("imported")
+x = Dataset("msmarco", None)
+x.evaluate()

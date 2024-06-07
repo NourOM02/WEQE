@@ -24,7 +24,7 @@ class Pipeline:
     def _initialize_datasets(self):
         datasets_objects = []
         for dataset in datasets:
-            datasets_objects.append(Dataset(dataset))
+            datasets_objects.append(Dataset(dataset, "GROQ_KEY_1"))
         return datasets_objects
 
     def batch_to_json(self):
@@ -114,19 +114,21 @@ class Pipeline:
         }
         for dataset in self.datasets:
             print(f"Evaluating {dataset.name}...", end='', flush=True)
-            for expansion in [None]+dataset.expanded:
+            for expansion in [None]+dataset.expansions:
                 dataset.approach = expansion
                 dataset.init_paths()
                 output = dataset.evaluate()
                 for metric in output:
                     if expansion not in results[metric]:
-                        results[metric]['baseline' if expansion else expansion] = []
-                    results[metric][expansion].append(output[metric])
+                        results[metric]['BM25' if expansion == None else f"BM25+{expansion}"] = []
+                    results[metric]['BM25' if expansion == None else f"BM25+{expansion}"].append(output[metric])
             print("Done!")
+
+        print(results)
         
         for metric in metrics:
             pd.DataFrame(results[metric]).to_csv(f"{dependencies}/results/{metric}.csv", index=False)
-        print("All datasets are evaluated successfully!\n\n")
+        print("All datasets are evaluated successfully!\n\n")                    
 
     def EDA(self):
         """
@@ -257,7 +259,6 @@ class Pipeline:
         plt.savefig('fig3_ratios.png')
         plt.show()
 
-
     def execute(self):
         """
         """
@@ -294,3 +295,6 @@ class Pipeline:
         print("****************************************************************")
         self.batch_retrieve()
         self.batch_evaluate()
+
+x = Pipeline()
+x.batch_expand()

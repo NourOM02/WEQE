@@ -17,13 +17,14 @@ import numpy as np
 from time import sleep
 
 class Expansion:
-    def __init__(self, dataset) -> None:
+    def __init__(self, dataset, key) -> None:
         self.name = dataset
         self.approach = None
         self._queries = f"{dependencies}/datasets/queries/{self.name}.tsv"
         self.queries_path = ""
         self.run_path = ""
-        self.client = self._API()
+        self.client = ""
+        self.key = key
         self.init_paths()
         self.expansions = expansions
         self.expanded = []
@@ -33,7 +34,7 @@ class Expansion:
         self.queries_path = f"{dependencies}/datasets/queries/{self.name}{suffix}.tsv"
         self.run_path = f"{dependencies}/.runs/{self.name}{suffix}.tsv"
 
-    def _API(self, key="GROQ_KEY"):
+    def _API(self, key):
         client = Groq(
             api_key=os.environ.get(key),
         )
@@ -54,22 +55,31 @@ class Expansion:
             return chat_completion.choices[0].message.content
         
         try:
+            self.client = self._API(self.key)
             return completion(self, prompt, model)
         except:
-            try:
-                self._API("GROQ_KEY_2")
-                return completion(self, prompt, model)
-            except:
-                try:
-                    self._API("GROQ_KEY_3")
-                    return completion(self, prompt, model)
-                except:
-                    print("API keys exhausted")
+            print("API key exhausted")
 
     
     def _concat(self, query_completion):
-        return f"{query_completion[0] * 5} + {query_completion[1]}".replace('\n', ' ')
+        return f"{query_completion[0] * 5} + {query_completion[1]}".replace('\n', ' ').replace('\t', ' ').replace('\r', ' ')
 
+    def _custom_1(self, **kwargs):
+        query = kwargs.get('query')
+        id = kwargs['id']
+        approach = kwargs['approach']
+        dataset = kwargs['dataset']
+        prf_path = kwargs['prf_path']
+        completion = ""
+        for i in range(3):
+            instruction = "Propose a query that could be used to search for the following document:\n"
+            instruction += f"Document: {prf_path[id][i]}\n"
+            completion += self.generate(instruction, id, approach, dataset) + ' '
+        instruction = ""
+        instruction = f"Write a passage that answers the given query: {query}"
+        completion += self.generate(instruction, id, approach, dataset)
+        return self._concat((query, completion))
+    
     def _Q2D(self, **kwargs):
         """
         query : str
@@ -77,7 +87,6 @@ class Expansion:
         """
         query = kwargs['query']
         examples_path = kwargs['examples_path']
-        print("*", sep='', end='', flush=True)
         instruction = f"Write a passage that answers the given query.\n\
         Here are examples of random queries (that aren't necessarly relevant) and the passages that answer them\n"
         prompt = instruction
@@ -88,6 +97,8 @@ class Expansion:
         
         prompt += instruction + f"Query : {query}" + '\n' + "Passage :"
         completion = self.generate(prompt)
+        if completion == None:
+            return None
         return self._concat((query, completion))
     
     def _Q2D_PRF(self, **kwargs):
@@ -99,14 +110,15 @@ class Expansion:
         query = kwargs.get('query')
         id = kwargs.get('id')
         PRF = ujson.load(open(kwargs['prf_path']))
-        print("*", sep='', end='', flush=True)
         instruction = "Write a passage that answers the given query based on the context:"
         prompt = instruction + '\nContext:\n'
-        prf_docs = PRF[str(id)]
+        prf_docs = PRF[str(id)][:1]
         for doc in prf_docs:
             prompt += doc + '\n'
         prompt += f"Query : {query}" + '\n' + "Passage :"
         completion = self.generate(prompt)
+        if completion == None:
+            return None
         return self._concat((query, completion))
     
     def _Q2D_ZS(self, **kwargs):
@@ -114,9 +126,10 @@ class Expansion:
         query : str
         """
         query = kwargs.get('query')
-        print("*", sep='', end='', flush=True)
         prompt = f"Write a passage that answers the given query: {query}"
         completion = self.generate(prompt)
+        if completion == None:
+            return None
         return self._concat((query, completion))
     
     def expand(self, examples_path, prf_path):
@@ -126,17 +139,27 @@ class Expansion:
             self.approach = self.expansions[0]
             self.init_paths()
             if not os.path.exists(self.queries_path):
-                scope = getattr(__import__(__name__), "Expansion")(self.name)
+                if not os.path.exists(f"{dependencies}/datasets/queries/{self.name}"):
+                    os.makedirs(f"{dependencies}/datasets/queries/{self.name}")
+                scope = getattr(__import__(__name__), "Expansion")(self.name, self.key)
                 self.approach = getattr(scope, f"_{self.approach}")
                 
                 queries = pd.read_csv(self._queries, sep='\t', header=None)
                 queries.columns = ['id', 'query']
 
-                queries["query"] = queries.apply(lambda row: self.approach(query=
-                    row['query'], id=row['id'], prf_path=prf_path, examples_path=
-                    examples_path, dataset=self.name), axis=1)
-
-                queries.to_csv(self.queries_path, sep='\t', index=False, header=None)
+                for row in queries.iterrows():
+                    query = row[1]['query']
+                    id = row[1]['id']
+                    if not os.path.exists(f"{dependencies}/datasets/queries/{self.name}/{id}_{self.expansions[0]}.txt"):
+                        expanded = self.approach(query=query, id=id, examples_path=examples_path,\
+                                  prf_path=prf_path, dataset=self.name)
+                        print(f"Expanding {id}_{self.expansions[0]}", end=' ', flush=True)
+                        if expanded == None:
+                            print("Failed...")
+                            continue
+                        with open(f"{dependencies}/datasets/queries/{self.name}/{id}_{self.expansions[0]}.txt", 'w') as file:
+                            print("Success...")
+                            file.write(expanded)
 
             self.expanded.append(self.expansions[0])
             self.expansions.pop(0)

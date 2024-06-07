@@ -29,9 +29,9 @@ from wordcloud import WordCloud
 from stopwords import stop_words as stopwords
 
 class Dataset(Expansion):
-    def __init__(self, name:str) -> None:
+    def __init__(self, name:str, key) -> None:
         self.name = name
-        super().__init__(self.name)
+        super().__init__(self.name, key)
         self.expansions = expansions.copy()
         self.raw_path = f"{raw_datasets}/{self.name}.zip"
         self.index_path = f"{dependencies}/indexes/{self.name}/"
@@ -74,6 +74,7 @@ class Dataset(Expansion):
     def _to_json(self) -> None:
         output_c = []
         output_q = {"id": [], "query": []}
+        qrels = pd.DataFrame({'query-id': [], 'corpus-id': [], 'score': []})
         # Initalize corpus and queries ids
         id = [1,1]
         # determine the paths depending on whether there are subdirectories
@@ -101,8 +102,8 @@ class Dataset(Expansion):
                     output_q["query"].append(line["text"])
                     id[1] += 1
             # Prepare the qrels for the given path
-            qrels = pd.read_csv(f"{path}/qrels/test.tsv", sep="\t")
-            qrels[['query-id', 'corpus-id']] = qrels[['query-id', 'corpus-id']].astype(str)
+            qrels_i = pd.read_csv(f"{path}/qrels/test.tsv", sep="\t")
+            qrels_i[['query-id', 'corpus-id']] = qrels_i[['query-id', 'corpus-id']].astype(str)
             """
             This part of the code is modified to deal with a problem found in the
             ArguAna dataset. The problem is that the qrels file contains a corpus
@@ -111,15 +112,16 @@ class Dataset(Expansion):
             that failed : (query-id in query file) AND (corpus-is in corpus file)
             """
             missings = []
-            for i in range(len(qrels)):
+            for i in range(len(qrels_i)):
                 # query-id and corpus-id verification
-                if qrels.iloc[i, 0] not in mappings_q or qrels.iloc[i, 1] not in mappings_c:
+                if qrels_i.iloc[i, 0] not in mappings_q or qrels_i.iloc[i, 1] not in mappings_c:
                     missings.append(i)
                     continue
-                qrels.iloc[i, 0] = mappings_q[str(qrels.iloc[i, 0])]
-                qrels.iloc[i, 1] = mappings_c[str(qrels.iloc[i, 1])]
+                qrels_i.iloc[i, 0] = mappings_q[str(qrels_i.iloc[i, 0])]
+                qrels_i.iloc[i, 1] = mappings_c[str(qrels_i.iloc[i, 1])]
             # delete missings from the file
-            qrels.drop(missings, inplace=True)
+            qrels_i.drop(missings, inplace=True)
+            qrels = pd.concat([qrels, qrels_i], ignore_index=True)
 
         # check if folder exists
         if not os.path.exists(os.path.dirname(self.json_path)):
@@ -302,8 +304,8 @@ class Dataset(Expansion):
             text = text.strip()
             return text
         stopwords_ = set(stopwords)
-        for i in tqdm(range(len(queries))):
-            for word in clean_text(queries.iloc[i,1].lower()).split():
+        for i in tqdm(range(len(corpus))):
+            for word in clean_text(corpus.iloc[i,1].lower()).split():
                 if word in stopwords_:
                     continue
                 if word in words:
@@ -332,15 +334,13 @@ class Dataset(Expansion):
         colours = ["#bbdefb", "#2196f3"]
         for i, ax in enumerate([ax1, ax2]):
             active = corpus if ax == ax1 else queries
-            cmap = mpl.LinearSegmentedColormap.from_list("colour_map", colours, N=256)
-            norm = mpl.Normalize(vmin=min(active['word_count']), vmax=max(active['word_count']))
 
             # Grid customization
             ax.grid(which="major", axis='x', color='#DAD8D7', alpha=0.5, zorder=1)
             ax.grid(which="major", axis='y', color='#DAD8D7', alpha=0.5, zorder=1)
 
             # Plotting the bars
-            hist = ax.hist(active["word_count"], bins=10, color="#2196f3")
+            hist = ax.hist(active["word_count"], bins=20, color="#2196f3")
             ax.set_title(f'Distribution of word count in {"Corpus" if ax == ax1 else "Queries"}')
             ax.set_xlabel('word count')
             ax.set_ylabel('number of occurences')
@@ -348,7 +348,7 @@ class Dataset(Expansion):
 
         # Show the plot
         histogram.tight_layout()
-        plt.savefig(f'{self.name}')
+        #plt.savefig(f'{self.name}')
         plt.show()
 
         output["cardinal"] = [len(queries), len(corpus), len(qrels)]
@@ -357,7 +357,3 @@ class Dataset(Expansion):
         output["ratio"] = round(len(qrels)/len(queries), 2)
         
         return output
-    
-for dataset in datasets:
-    x = Dataset(dataset)
-    x._numbers()
