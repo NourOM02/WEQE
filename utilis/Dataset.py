@@ -357,6 +357,3 @@ class Dataset(Expansion):
         output["ratio"] = round(len(qrels)/len(queries), 2)
         
         return output
-
-x = Dataset('msmarco', "GROQ_kEY_1")
-x.examples()

@@ -1,5 +1,7 @@
 from Dataset import Dataset
 
-msmarco = Dataset('msmarco', "GROQ_KEY_2")
-msmarco.expand(msmarco.examples_path, msmarco.PRF_path)
+hotpotqa = Dataset('hotpotqa', "GROQ_KEY_2")
+hotpotqa.expand(hotpotqa.examples_path, hotpotqa.PRF_path)
 
+nq = Dataset('nq', 'GROQ_KEY_2')
+nq.expand(nq.examples_path, nq.PRF_path)

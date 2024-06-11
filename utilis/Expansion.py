@@ -16,6 +16,13 @@ import pandas as pd
 import numpy as np
 import re
 from stopwords import stop_words
+from time import perf_counter
+
+# Logs
+if not os.path.exists(f"{dependencies}/logs"):
+    os.makedirs(f"{dependencies}/logs")
+time_logs = open(f"{dependencies}/logs/time_logs.txt", 'a+', encoding='utf-8')
+expansions_logs = open(f"{dependencies}/logs/expansions_logs.txt", 'a+', encoding='utf-8')
 
 class Expansion:
     def __init__(self, dataset, key) -> None:
@@ -196,20 +203,26 @@ class Expansion:
                     query = row[1]['query']
                     id = row[1]['id']
                     if not os.path.exists(f"{dependencies}/datasets/queries/{self.name}/{id}_{self.expansions[0]}.txt"):
+                        expansions_logs.write(f"{self.name}, {id}, {self.expansions[0]}")
+                        time_logs.write(f"{self.name}, {id}, {self.expansions[0]}")
+                        status = ""
+                        start = perf_counter()
                         while True:
                             expanded = self.approach(query=query, id=id, examples_path=examples_path,\
                                     prf_path=prf_path, dataset=self.name)
                             print(f"Expanding {id}_{self.expansions[0]}", end=' ', flush=True)
-                            if expanded == None:
+                            if expanded == None or len(expanded) <= len(query)*5 + 100:
                                 print("Failed...")
-                                continue
-                            elif len(expanded) <= len(query)*5 + 100:
-                                print("Failed...")
+                                status += "X"
                                 continue
                             with open(f"{dependencies}/datasets/queries/{self.name}/{id}_{self.expansions[0]}.txt", 'w') as file:
                                 print("Success...")
+                                status += "O"
                                 file.write(expanded)
+                                expansions_logs.write(f", {status}\n")
+                                time_logs.write(f", {perf_counter() - start}\n")
                                 break
+                        
 
             self.expanded.append(self.expansions[0])
             self.expansions.pop(0)
