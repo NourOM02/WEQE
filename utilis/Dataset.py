@@ -185,7 +185,7 @@ class Dataset(Expansion):
         corpus = ujson.load(open(self.corpus_path, 'r'))
         
         # filter qrels to keep only relevant passages
-        qrels = qrels[qrels.iloc[:,3] == 1]
+        qrels = qrels[qrels.iloc[:,3] != 0]
         
         # check if K is greater than the available sources
         K = min(K, len(corpus), len(queries), len(qrels))
@@ -196,10 +196,10 @@ class Dataset(Expansion):
         for i in range(len(qrels)):
             # determine the query_id and passage_id to use
             qid = qrels.iloc[i, 0]
-            pid = qrels.iloc[i, 0]
+            pid = qrels.iloc[i, 2]
             # append the query and passage to the dictionary
             dict["query"].append(queries[queries.iloc[:,0] == qid].iloc[:,1].values[0])
-            dict["passage"].append(corpus[pid-1])
+            dict["passage"].append(corpus[pid-1]["contents"])
         # save the examples to a tsv file
         df = pd.DataFrame(dict)
         df.to_csv(self.examples_path, sep='\t', index=False, header=False)
@@ -357,3 +357,6 @@ class Dataset(Expansion):
         output["ratio"] = round(len(qrels)/len(queries), 2)
         
         return output
+
+x = Dataset('msmarco', "GROQ_kEY_1")
+x.examples()

@@ -116,15 +116,16 @@ class Pipeline:
             print(f"Evaluating {dataset.name}...", end='', flush=True)
             for expansion in [None]+dataset.expansions:
                 dataset.approach = expansion
+                print(dataset.approach)
                 dataset.init_paths()
+                print(dataset.queries_path)
                 output = dataset.evaluate()
                 for metric in output:
+                    print(output[metric])
                     if expansion not in results[metric]:
-                        results[metric]['BM25' if expansion == None else f"BM25+{expansion}"] = []
-                    results[metric]['BM25' if expansion == None else f"BM25+{expansion}"].append(output[metric])
+                        results[metric][expansion] = []
+                    results[metric][expansion].append(output[metric])
             print("Done!")
-
-        print(results)
         
         for metric in metrics:
             pd.DataFrame(results[metric]).to_csv(f"{dependencies}/results/{metric}.csv", index=False)
@@ -287,14 +288,14 @@ class Pipeline:
         print("****************************************************************")
         print(f"Expanding Queries...")
         print("****************************************************************")
-        self.batch_expand()
+        #self.batch_expand()
         
         # Retrieve and evaluate for expanded queries
         print("****************************************************************")
         print(f"Retrieving and Evaluating for expanded queries...")
         print("****************************************************************")
-        self.batch_retrieve()
-        self.batch_evaluate()
+        #self.batch_retrieve()
+        #self.batch_evaluate()
 
 x = Pipeline()
-x.batch_expand()
+x.execute()
