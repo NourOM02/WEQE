@@ -1,15 +1,15 @@
 from Dataset import Dataset
+import os
+
+# dbpedia_entity = Dataset('', "GROQ_KEY_1")
+# dbpedia_entity.expand(dbpedia_entity.examples_path, dbpedia_entity.PRF_path)
+# dbpedia_entity.assemble()
+
+# fever = Dataset('fever', "GROQ_KEY_1")
+# fever.expand(fever.examples_path, fever.PRF_path)
+# fever.assemble()
 
 
-dbpedia_entity = Dataset('dbpedia-entity', "GROQ_KEY_1")
-dbpedia_entity.expand(dbpedia_entity.examples_path, dbpedia_entity.PRF_path)
-
-fever = Dataset('fever', "GROQ_KEY_1")
-fever.expand(fever.examples_path, fever.PRF_path)
-
-fiqa = Dataset('fiqa', "GROQ_KEY_1")
-fiqa.expand(fiqa.examples_path, fiqa.PRF_path)
-
-nfcorpus = Dataset('nfcorpus', "GROQ_KEY_1")
-nfcorpus.expand(nfcorpus.examples_path, nfcorpus.PRF_path)
-
+scidocs = Dataset('webis-touche2020', "GROQ_KEY_1")
+# scidocs.expand(scidocs.examples_path, scidocs.PRF_path)
+scidocs.assemble()

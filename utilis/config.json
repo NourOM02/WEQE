@@ -15,5 +15,5 @@
         "MAP" : "map",
         "NDCG@10" : "ndcg_cut_10"
     },
-    "expansions" : ["Q2D"]
+    "expansions" : ["Q2D", "Q2D_PRF", "Q2D_ZS", "WEQE"]
 }

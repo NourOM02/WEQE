@@ -26,7 +26,6 @@ from matplotlib.gridspec import GridSpec
 import matplotlib.colors as mpl
 from time import perf_counter as pf
 from wordcloud import WordCloud
-from stopwords import stop_words as stopwords
 
 class Dataset(Expansion):
     def __init__(self, name:str, key) -> None:
@@ -284,6 +283,7 @@ class Dataset(Expansion):
 
         return results
     
+    # This method is for data analysis    
     def _numbers(self):
         """
         This function is used to determine the number/lengths of queries, passages and qrels
@@ -303,6 +303,7 @@ class Dataset(Expansion):
             # Remove extra whitespace
             text = text.strip()
             return text
+        stopwords = [] # Change according to needs
         stopwords_ = set(stopwords)
         for i in tqdm(range(len(corpus))):
             for word in clean_text(corpus.iloc[i,1].lower()).split():
@@ -357,3 +358,4 @@ class Dataset(Expansion):
         output["ratio"] = round(len(qrels)/len(queries), 2)
         
         return output
+
