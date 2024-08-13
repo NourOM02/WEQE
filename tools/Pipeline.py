@@ -24,7 +24,7 @@ class Pipeline:
     def _initialize_datasets(self):
         datasets_objects = []
         for dataset in datasets:
-            datasets_objects.append(Dataset(dataset, "GROQ_KEY_1"))
+            datasets_objects.append(Dataset(dataset, "GROQ_KEY"))
         return datasets_objects
 
     def batch_to_json(self):
