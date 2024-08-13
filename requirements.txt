@@ -1,0 +1,12 @@
+torch
+faiss-cpu
+pyserini
+pandas
+wordcloud
+nltk
+matplotlib
+tqdm
+ujson
+numpy
+groq
+sentence-transformers

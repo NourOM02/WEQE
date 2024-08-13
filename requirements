@@ -1,7 +1,0 @@
-torch
-faiss-cpu
-pyserini
-pandas
-wordcloud
-ntlk
-matplotlib

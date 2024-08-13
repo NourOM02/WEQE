@@ -4,57 +4,34 @@ import os
 config = f"{os.path.dirname(os.path.abspath(__file__))}/config.json"
 with open(config, 'r') as json_file:
     config = ujson.load(json_file)
-    raw_datasets = config['raw_datasets']
     datasets = config['datasets']
     project_path = config['project_path']
-    dependencies = config['dependencies']
-    metrics = config['metrics']
+    cache_dir = config['cache_dir']
+    raw_datasets = f"{cache_dir}/.raw_datasets"
     expansions = config['expansions']
+    metrics = config['metrics']
 
 
 # Load libraries
-import shutil
 import zipfile
 from tqdm import tqdm
 import subprocess
 import pandas as pd
-from Expansion import Expansion
+from tools.Expansion import Expansion
 import re
-import string
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-import matplotlib.colors as mpl
-from time import perf_counter as pf
-from wordcloud import WordCloud
+import shutil
 
 class Dataset(Expansion):
     def __init__(self, name:str, key) -> None:
         self.name = name
         super().__init__(self.name, key)
-        self.expansions = expansions.copy()
         self.raw_path = f"{raw_datasets}/{self.name}.zip"
-        self.index_path = f"{dependencies}/indexes/{self.name}/"
-        self.json_path = f"{dependencies}/.jsons/{self.name}/tmp.json"
-        self.qrels_path = f"{dependencies}/datasets/qrels/{self.name}.tsv"
-        self.corpus_path = f"{dependencies}/.jsons/{self.name}/tmp.json"
-        self.examples_path = f"{dependencies}/datasets/examples/{self.name}.tsv"
-        self.PRF_path = f"{dependencies}/datasets/PRF/{self.name}.json"
-        self._dependencies()
-        
-    def _dependencies(self):
-        """
-        This function is used to create the necessary directories for the datasets
-        """
-
-        needed_folders = [dependencies, dependencies+"/indexes", dependencies+"/.jsons",
-                          dependencies + "/.runs", dependencies + "/results",
-                          dependencies+"/datasets", dependencies+"/datasets/queries",
-                          dependencies+"/datasets/qrels", dependencies+"/datasets/examples",
-                          dependencies+"/datasets/PRF"]
-        
-        for folder in needed_folders:
-            if not os.path.exists(folder):
-                os.makedirs(folder)
+        self.index_path = f"{cache_dir}/indexes/{self.name}/"
+        self.json_path = f"{cache_dir}/.jsons/{self.name}/tmp.json"
+        self.qrels_path = f"{cache_dir}/datasets/qrels/{self.name}.tsv"
+        self.corpus_path = f"{cache_dir}/.jsons/{self.name}/tmp.json"
+        self.examples_path = f"{cache_dir}/datasets/examples/{self.name}.tsv"
+        self.PRF_path = f"{cache_dir}/datasets/PRF/{self.name}.json"
 
     def _unzip(self) -> None:
         # Check if the dataset is already unzipped
@@ -179,10 +156,11 @@ class Dataset(Expansion):
         K: int
             (default: 1000) The number of examples to prepare. 
         """
+        print("1")
         queries = pd.read_csv(self.queries_path, sep="\t", header=None)
         qrels = pd.read_csv(self.qrels_path, sep="\t", header=None)
         corpus = ujson.load(open(self.corpus_path, 'r'))
-        
+        print("2")
         # filter qrels to keep only relevant passages
         qrels = qrels[qrels.iloc[:,3] != 0]
         
@@ -224,6 +202,9 @@ class Dataset(Expansion):
             
         """
 
+        print(os.path.dirname(self.json_path))
+        print(self.index_path)
+
         command = f"python -m pyserini.index.lucene \
                --collection JsonCollection \
                --input {os.path.dirname(self.json_path)} \
@@ -249,7 +230,7 @@ class Dataset(Expansion):
                 --b 0.75 --k1 1.2 \
                 --hits 1000 --bm25 --remove-query"
     
-        os.system(command)
+        subprocess.run(command, shell=True)
 
     def PRF(self, k:int=5):
         print(f"generating PRF for {self.name}")
@@ -265,6 +246,7 @@ class Dataset(Expansion):
             for key in queries.iloc[:,0]}
         
         ujson.dump(PRF, open(self.PRF_path, 'w'))
+        shutil.rmtree(f"{raw_datasets}/{self.name}")
 
     def evaluate(self):
         results = {key : 0 for key in metrics}
@@ -282,80 +264,3 @@ class Dataset(Expansion):
                 results[key] = float(match.group(1))*100
 
         return results
-    
-    # This method is for data analysis    
-    def _numbers(self):
-        """
-        This function is used to determine the number/lengths of queries, passages and qrels
-        in the dataset. It is used to determine the number of examples to prepare.
-        """
-        output = {"cardinal" : [], "length" : [], "ratio" : 0}
-        queries = pd.read_csv(self.queries_path, sep="\t", header=None)
-        queries['word_count'] = queries.iloc[:,1].apply(lambda x: len(x.split()))
-        qrels = pd.read_csv(self.qrels_path, sep="\t", header=None)
-        corpus = pd.read_json(self.corpus_path)
-        words = {}
-        def clean_text(text):
-            # Remove punctuation
-            text = text.translate(str.maketrans('', '', string.punctuation))
-            # Remove numbers
-            text = re.sub(r'\d+', '', text)
-            # Remove extra whitespace
-            text = text.strip()
-            return text
-        stopwords = [] # Change according to needs
-        stopwords_ = set(stopwords)
-        for i in tqdm(range(len(corpus))):
-            for word in clean_text(corpus.iloc[i,1].lower()).split():
-                if word in stopwords_:
-                    continue
-                if word in words:
-                    words[word] += 1
-                else:
-                    words[word] = 1
-
-        wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(words)
-        plt.figure(figsize=(10, 5))
-        plt.imshow(wordcloud, interpolation='bilinear')
-        plt.axis('off')  # No axes for the word cloud
-        plt.savefig(f"{self.name}.png")
-        plt.show()
-
-        corpus['word_count'] = corpus.iloc[:,1].apply(lambda x: len(x.split()))
-        queries["word_count"] = queries.iloc[:,1].apply(lambda x: len(x.split()))
-
-
-        histogram = plt.figure(figsize=(18, 6), dpi=300)
-        gs = GridSpec(1, 2, figure=histogram)
-
-        ax1 = histogram.add_subplot(gs[0, 0])
-        ax2 = histogram.add_subplot(gs[0, 1])
-
-        # Colors and normalization for bar colors
-        colours = ["#bbdefb", "#2196f3"]
-        for i, ax in enumerate([ax1, ax2]):
-            active = corpus if ax == ax1 else queries
-
-            # Grid customization
-            ax.grid(which="major", axis='x', color='#DAD8D7', alpha=0.5, zorder=1)
-            ax.grid(which="major", axis='y', color='#DAD8D7', alpha=0.5, zorder=1)
-
-            # Plotting the bars
-            hist = ax.hist(active["word_count"], bins=20, color="#2196f3")
-            ax.set_title(f'Distribution of word count in {"Corpus" if ax == ax1 else "Queries"}')
-            ax.set_xlabel('word count')
-            ax.set_ylabel('number of occurences')
-            ax.tick_params(axis='x', rotation=45)
-
-        # Show the plot
-        histogram.tight_layout()
-        #plt.savefig(f'{self.name}')
-        plt.show()
-
-        output["cardinal"] = [len(queries), len(corpus), len(qrels)]
-        output["length"] = [round(queries['word_count'].mean(), 2),
-                            round(corpus['word_count'].mean(), 2)]
-        output["ratio"] = round(len(qrels)/len(queries), 2)
-        
-        return output
-
