@@ -167,6 +167,3 @@ class Pipeline:
         print("****************************************************************")
         self.batch_retrieve()
         self.batch_evaluate()
-
-x = Pipeline()
-x.execute()
