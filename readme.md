@@ -1,6 +1,6 @@
 # Weighted Embeddings Query Expansion (WEQE)
 
-This repository summarizes my work during my graduation internship: Query Expansion using Generative AI. It applies 3 expansion methods from the following [paper](https://arxiv.org/pdf/2305.03653), in addition to introducing a novel expansion method: WEQE that outperforms other methods in Recall. It also provides tools for evaluating and comparing the results. A detailed report about the project can be found in the following [report](https://drive.google.com/file/d/1Bl_JYKQ7iOfnkXL9Q1fitUGf997mo5JT/view?usp=drive_link).
+WEQE is about Query Expansion using Generative AI. It applies 3 expansion methods from the following [paper](https://arxiv.org/pdf/2305.03653), in addition to introducing a novel expansion method: WEQE that outperforms other methods in Recall. It also provides tools for evaluating and comparing the results. A detailed report about the project can be found in the following [report](https://drive.google.com/file/d/1Bl_JYKQ7iOfnkXL9Q1fitUGf997mo5JT/view?usp=drive_link).
 
 ## Dependencies
 
